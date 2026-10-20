@@ -590,6 +590,56 @@ class TestInvalid(util.TestCase):
         with self.assertRaises(TypeError):
             sv.filter('div', "not a tag", flags=flags)
 
+    def test_excessive_selectors(self):
+        """Test excessive selectors."""
+
+        # Build a 500 KB selector string: "a,a,a,...,a" (250,000 items)
+        count = 10000
+        selector = ",".join("a" for _ in range(count))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile(selector)
+
+    def test_excessive_custom_selectors(self):
+        """Test excessive custom selectors."""
+
+        # Build a 500 KB selector string: "a,a,a,...,a" (250,000 items)
+        count = 10000
+        selector = ",".join("a" for _ in range(count))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile('div:--custom', custom={':--custom': selector})
+
+    def test_excessive_custom_and_normal_selectors(self):
+        """Test excessive custom and normal selectors."""
+
+        count = 5000
+        selector = ",".join("a" for _ in range(count))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile(':is({}):--custom'.format(selector), custom={':--custom': selector})
+
+    def test_excessive_reused_custom_selectors(self):
+        """Test that reusing a custom selector many times counts against the limit."""
+
+        selector = ",".join("a" for _ in range(100))
+        pattern = ':is({})'.format(", ".join(':--custom' for _ in range(100)))
+
+        # Compile the selector
+        with self.assertRaises(ValueError):
+            sv.compile(pattern, custom={':--custom': selector})
+
+    def test_selectors_within_limit(self):
+        """Test that a large selector list within the limit still compiles and matches."""
+
+        selector = ",".join("a" for _ in range(1000))
+        soup = self.soup('<div><a id="1"></a><a id="2"></a></div>', 'html.parser')
+
+        self.assertEqual([el['id'] for el in sv.select(selector, soup)], ['1', '2'])
+
 
 class TestSyntaxErrorReporting(util.TestCase):
     """Test reporting of syntax errors."""
