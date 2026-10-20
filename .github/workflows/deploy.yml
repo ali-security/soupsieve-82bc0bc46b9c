@@ -1,43 +1,16 @@
 name: deploy
 
 on:
-  push:
-    tags:
-    - '*'
+  workflow_dispatch: {}
+
+env:
+  PIP_INDEX_URL: https://:2023-04-16T23:56:46.279633Z@time-machines-pypi.sealsecurity.io/
 
 jobs:
 
-  documents:
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.9]
-
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip setuptools
-        python -m pip install -r requirements/docs.txt
-    - name: Deploy documents
-      run: |
-        git config user.name ${{ secrets.GH_USER }}
-        git config user.email "${{ secrets.GH_EMAIL }}"
-        git remote add gh-token "https://${{ secrets.GH_TOKEN }}@github.com/facelessuser/soupsieve.git"
-        git fetch gh-token && git fetch gh-token gh-pages:gh-pages
-        python -m mkdocs gh-deploy -v --clean --remote-name gh-token
-        git push gh-token gh-pages
-
   pypi:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v3
@@ -48,8 +21,9 @@ jobs:
         run: |
           pip install --upgrade build
           python -m build -s -w
-      - name: Publish
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
         with:
-          user: __token__
-          password: ${{ secrets.PYPI_TOKEN }}
+          name: dist
+          path: dist/*
+          if-no-files-found: error
